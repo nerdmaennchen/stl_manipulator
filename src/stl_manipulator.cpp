@@ -9,9 +9,6 @@
 
 namespace {
 
-sargp::Parameter<std::optional<std::string>> printHelp{{}, "help", "print this help add a string which will be used in a grep-like search through the parameters"};
-
-
 arma::mat44 transform = arma::eye(4,4);
 
 sargp::Parameter<double> rotX {1., "rotX", "how much to rotate around the x axis (degrees)", []{ transform = kinematicTree::utils::getTransform(0, 0, 0, *rotX * M_PI/180., 0, 0) * transform; }};
@@ -34,25 +31,57 @@ sargp::Parameter<sargp::File> outFile {"", "out", "the file to write to"};
 sargp::Flag invertVertexFanning {"invert_vertex_fanning", "reorder the vertices of all facets"};
 sargp::Flag addInvertedVerteces {"add_inverted_vertices", "add reordered vertices of all facets (effectively copies all vertives once)"};
 
-sargp::Parameter<double> totalMass {0., "total_mass", "total mass of the object (used to calculate mass properties)"};
-sargp::Parameter<double> density {0., "density", "density of the object (used to calculate mass properties)"};
+void stl_manipulator()
+{
+	auto const& subC = sargp::getDefaultCommand().getSubCommands();
+	if (std::any_of(begin(subC), end(subC), [](auto const& c) -> bool {return *c;})) {
+		return;
+	}
+	if (not inFile) {
+		throw std::runtime_error("in has to be specified!");
+	}
+	if (not outFile) {
+		throw std::runtime_error("out has to be specified!");
+	}
 
+	kinematicTree::visual::stl::STLParser parser;
+	auto mesh = parser.parse(*inFile);
+	std::cout << transform << std::endl;
+	mesh.applyTransform(transform);
+
+	if (addInvertedVerteces) {
+		auto meshInverted = mesh;
+		meshInverted.invertVertexFanning();
+		for (auto const& facet : meshInverted.getFacets()) {
+			mesh.addFacet(facet);
+		}
+	}
+
+	if (invertVertexFanning) {
+		mesh.invertVertexFanning();
+	}
+
+	auto const inf = std::numeric_limits<double>::infinity();
+	arma::colvec3 bb_min {inf, inf, inf};
+	arma::colvec3 bb_max {-inf, -inf, -inf};
+	for (auto const& facet : mesh.getFacets()) {
+		for (auto const& vertex : facet.mVertices) {
+			bb_min = arma::min(bb_min, vertex);
+			bb_max = arma::max(bb_max, vertex);
+		}
+	}
+
+	std::cout << "\n\nbounding box min: \n" << bb_min;
+
+	std::cout << "\n\nbounding box max: \n" << bb_max;
+
+	std::cout << "\n\ndimensions: \n" << (bb_max - bb_min);
+
+	parser.dump(mesh, *outFile);
+	std::cout << "done" << std::endl;
 }
 
-int main(int argc, char** argv)
-{
-	if (std::string(argv[argc-1]) == "--compgen") {
-		std::cout << sargp::compgen(argc-2, argv+1);
-		return 0;
-	}
-	// pass everything except the name of the application
-	sargp::parseArguments(argc-1, argv+1);
 
-	if (printHelp) {
-		std::cout << sargp::generateHelpString(std::regex{".*" + printHelp.get().value_or("") + ".*"}) << std::endl;
-		return 0;
-	}
+sargp::Task task{stl_manipulator};
 
-	sargp::callCommands();
-	return 0;
 }
