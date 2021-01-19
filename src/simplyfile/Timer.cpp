@@ -2,7 +2,7 @@
 
 #include <time.h>
 
-
+#include <stdexcept>
 namespace simplyfile
 {
 

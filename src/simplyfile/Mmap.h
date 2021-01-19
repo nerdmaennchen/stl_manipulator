@@ -3,6 +3,9 @@
 #include "simplyfile/FileDescriptor.h"
 #include "sys/mman.h"
 
+#include <stdexcept>
+#include <string>
+
 namespace simplyfile
 {
 

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/un.h>
 
+#include <stdexcept>
 namespace simplyfile
 {
 ClientSocket::ClientSocket(int _fd, Host const& _host)
