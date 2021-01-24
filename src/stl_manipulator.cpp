@@ -25,8 +25,8 @@ sargp::Parameter<double> scaleX {1., "scaleX", "scale the x components of the ST
 sargp::Parameter<double> scaleY {1., "scaleY", "scale the y components of the STL", []{ transform = arma::mat44{{1, 0, 0, 0}, {0, *scaleY, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}} * transform;}};
 sargp::Parameter<double> scaleZ {1., "scaleZ", "scale the z components of the STL", []{ transform = arma::mat44{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, *scaleZ, 0}, {0, 0, 0, 1}} * transform;}};
 
-sargp::Parameter<sargp::File> inFile  {"", "in", "the file to read from"};
-sargp::Parameter<sargp::File> outFile {"", "out", "the file to write to"};
+sargp::Parameter<std::vector<std::string>> inFiles  {{}, "in", "the file(s) to read from", []{}, sargp::completeFile("stl", sargp::File::Multi)};
+sargp::Parameter<std::string> outFile {"", "out", "the file to write to", []{}, sargp::completeFile("stl", sargp::File::Single)};
 
 sargp::Flag invertVertexFanning {"invert_vertex_fanning", "reorder the vertices of all facets"};
 sargp::Flag addInvertedVerteces {"add_inverted_vertices", "add reordered vertices of all facets (effectively copies all vertives once)"};
@@ -37,19 +37,29 @@ void stl_manipulator()
 	if (std::any_of(begin(subC), end(subC), [](auto const& c) -> bool {return *c;})) {
 		return;
 	}
-	if (not inFile) {
+	if (not inFiles) {
 		throw std::runtime_error("in has to be specified!");
 	}
 	if (not outFile) {
 		throw std::runtime_error("out has to be specified!");
 	}
 
-	kinematicTree::visual::stl::STLParser parser;
-	auto mesh = parser.parse(*inFile);
-	std::cout << transform << std::endl;
-	mesh.applyTransform(transform);
+    
+    kinematicTree::visual::stl::STLParser parser;
+    kinematicTree::visual::mesh::Mesh mesh;
+    for (auto const& file : *inFiles) {
+        std::cout << "loading : " << file << "\n";
+        auto subMesh = parser.parse(file);
+		for (auto const& facet : subMesh.getFacets()) {
+			mesh.addFacet(facet);
+		}
+    }
+
+    transform.print("applying transform");
+    mesh.applyTransform(transform);
 
 	if (addInvertedVerteces) {
+        std::cout << "adding inverted vertices to the output mesh\n";
 		auto meshInverted = mesh;
 		meshInverted.invertVertexFanning();
 		for (auto const& facet : meshInverted.getFacets()) {
@@ -58,6 +68,7 @@ void stl_manipulator()
 	}
 
 	if (invertVertexFanning) {
+        std::cout << "inverting the fanning\n";
 		mesh.invertVertexFanning();
 	}
 
@@ -77,6 +88,7 @@ void stl_manipulator()
 
 	std::cout << "\n\ndimensions: \n" << (bb_max - bb_min);
 
+    std::cout << "writing output file " << *outFile << "\n";
 	parser.dump(mesh, *outFile);
 	std::cout << "done" << std::endl;
 }

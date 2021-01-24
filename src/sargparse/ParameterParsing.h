@@ -12,12 +12,9 @@
 #include <optional>
 #include <filesystem>
 
-namespace sargp
-{
-namespace parsing
-{
-namespace detail
-{
+namespace sargp {
+namespace parsing {
+namespace detail {
 
 struct ParseError : std::invalid_argument {
 	ParseError(std::string const& msg="")
@@ -102,10 +99,6 @@ T parseFromString(std::string str) {
 				auto value = parseSuffix<T>(suffix);
 				if (not value) {
 					throw ParseError{"unknown suffix"};
-				}
-				if (__int128_t(ret) * value.value() > std::numeric_limits<T>::max()
-					or __int128_t(ret) * value.value() < std::numeric_limits<T>::min()) {
-						throw ParseError{"out of range"};
 				}
 				ret *= value.value();
 			}
@@ -234,5 +227,3 @@ std::string stringify(T const& t) {
 
 }
 }
-
-

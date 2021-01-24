@@ -6,7 +6,7 @@
 #include "tetrahedron.h"
 
 #include <iostream>
-
+#include <vector>
 #include <armadillo>
 
 void print_mass_properties();
@@ -15,7 +15,7 @@ sargp::Command cmd { "mass_properties", "show mass properties", print_mass_prope
 auto totalMass = cmd.Parameter<std::optional<double>>({}, "total_mass", "total mass of the object (used to calculate mass properties)");
 auto density = cmd.Parameter<std::optional<double>>({}, "density", "density of the object (used to calculate mass properties)");
 
-auto inFile = cmd.Parameter<sargp::File>("", "in", "the file to read from");
+auto inFiles = cmd.Parameter<std::vector<std::string>>({}, "in", "the file(s) to read from", []{}, sargp::completeFile("stl", sargp::File::Multi));
 
 auto skew(arma::colvec3 const& v)
 {
@@ -28,11 +28,19 @@ auto skew(arma::colvec3 const& v)
 
 void print_mass_properties()
 {
-    if (not inFile) {
+    if (not inFiles) {
         throw std::runtime_error("in has to be specified!");
     }
+
     kinematicTree::visual::stl::STLParser parser;
-    auto mesh = parser.parse(*inFile);
+    kinematicTree::visual::mesh::Mesh mesh;
+    for (auto const& file : *inFiles) {
+        std::cout << "loading : " << file << "\n";
+        auto subMesh = parser.parse(file);
+		for (auto const& facet : subMesh.getFacets()) {
+			mesh.addFacet(facet);
+		}
+    }
 
     arma::mat33 inertia_tensor = arma::zeros(3, 3);
     double totalVolume {};
