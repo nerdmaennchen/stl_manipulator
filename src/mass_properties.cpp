@@ -87,7 +87,7 @@ void print_mass_properties()
     }
 
     if (*totalMass) {
-        auto density = totalVolume / **totalMass;
+        auto density = **totalMass / totalVolume;
         std::cout << "properties by given total mass: (" << **totalMass << ")\n\n";
         std::cout << "density: " << density << "\n";
         arma::mat33 I = inertia_tensor * density;
