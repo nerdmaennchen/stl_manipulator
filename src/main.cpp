@@ -2,7 +2,6 @@
 #include "sargparse/File.h"
 #include "sargparse/ArgumentParsing.h"
 
-#include "homogeneousTransform.h"
 #include "stl/STLParser.h"
 
 #include <iostream>

@@ -2,8 +2,10 @@
 #include "sargparse/Parameter.h"
 
 #include "stl/STLParser.h"
+#include "global_parameters.h"
 
 #include "tetrahedron.h"
+#include "transformer.h"
 
 #include <iostream>
 #include <vector>
@@ -14,8 +16,8 @@ sargp::Command cmd { "mass_properties", "show mass properties", print_mass_prope
 
 auto totalMass = cmd.Parameter<std::optional<double>>({}, "total_mass", "total mass of the object (used to calculate mass properties)");
 auto density = cmd.Parameter<std::optional<double>>({}, "density", "density of the object (used to calculate mass properties)");
+auto tensorPerspectiveOrigin = cmd.Flag("tensor_from_origin", "print the tensor from the perspective of the origin frame");
 
-auto inFiles = cmd.Parameter<std::vector<std::string>>({}, "in", "the file(s) to read from", []{}, sargp::completeFile("stl", sargp::File::Multi));
 
 auto skew(arma::colvec3 const& v)
 {
@@ -41,6 +43,10 @@ void print_mass_properties()
 			mesh.addFacet(facet);
 		}
     }
+
+	auto transform = getTransform();
+    transform.print("applying transform");
+    mesh.applyTransform(transform);
 
     arma::mat33 inertia_tensor = arma::zeros(3, 3);
     double totalVolume {};
@@ -72,8 +78,10 @@ void print_mass_properties()
         std::cout << "total mass: " << totMass << "\n";
         arma::mat33 I = inertia_tensor * **density;
 
-        // move the inertia_tensor to the COM
-        I += totMass * skew(com) * skew(com);
+        if (not *tensorPerspectiveOrigin) {
+            // move the inertia_tensor to the COM
+            I += totMass * skew(com) * skew(com);
+        }
 
         I.print("inertia tensor");
     }
@@ -85,7 +93,9 @@ void print_mass_properties()
         arma::mat33 I = inertia_tensor * density;
 
         // move the inertia_tensor to the COM
-        I += **totalMass * skew(com) * skew(com);
+        if (not *tensorPerspectiveOrigin) {
+            I += **totalMass * skew(com) * skew(com);
+        }
 
         I.print("inertia tensor");
     }
