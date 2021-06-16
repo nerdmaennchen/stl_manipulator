@@ -1,5 +1,5 @@
 .settings/
 .vscode/
 obj/
-stl_manipulator.elf
+stl_manipulator
 **.orig
